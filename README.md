@@ -8,6 +8,10 @@ After you deploy the Quick Start, you can set up a webhook that uses the endpoin
 
 The Quick Start includes an AWS CloudFormation template that automates the deployment. You can also use the AWS CloudFormation template as a starting point for your own implementation.
 
+Tutorial on integrating git server with aws codepipeline: (https://aws.amazon.com/blogs/devops/integrating-git-with-aws-codepipeline/)
+Explicit manual for the above tutorial: (https://aws-quickstart.s3.amazonaws.com/quickstart-git2s3/doc/git-to-amazon-s3-using-webhooks.pdf)
+Source repository for the above tutorial: (https://github.com/aws-quickstart/quickstart-git2s3)
+
 ![Quick Start architecture for implementing webhooks on AWS](https://d0.awsstatic.com/partner-network/QuickStart/datasheets/git-to-s3-webhooks-architecture-on-aws.png)
 
 For implementation details, deployment instructions, and customization options, see the [deployment guide](https://fwd.aws/QQBRr).
