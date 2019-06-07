@@ -35,11 +35,13 @@
                 },
                 {
                     "Label": {
-                        "default": "Git AWS Integration Sourcee Code Configuration"
+                        "default": "Copy and Zip Sourcee Code Configuration"
                     },
                     "Parameters": [
-                        "QSS3BucketName",
-                        "QSS3KeyPrefix"
+                        "SourceBucket",
+                        "SourceBucketSubFolder",                        
+                        "BucketForZippedSource",
+                        "CopyZipsRoleArn"
                     ]
                 }
             ],
@@ -65,14 +67,20 @@
                 "OutputBucketName": {
                     "default": "Output S3 Bucket Name"
                 },
-                "QSS3BucketName": {
-                    "default": "Quick Start S3 Bucket Name"
+                "SourceBucket": {
+                    "default": "Source Code Bucket"
                 },
-                "QSS3KeyPrefix": {
-                    "default": "Quick Start S3 Key Prefix"
+                "SourceBucketSubFolder": {
+                    "default": "Source Code Sub Folder under Source Code Bucket"
+                },
+                "BucketForZippedSource": {
+                    "default": "Zipped Source Code Bucket"
                 },
                 "KMSKeyArn": {
-                    "default": The KMS key arn used by KMS service to encruption and decryption SSH keys"
+                    "default": "KMS Key Arn"
+                },
+                "CopyZipsRoleArn": {
+                    "default": "Copy Zip Role Arn"
                 }
             }
         }
@@ -119,23 +127,35 @@
             "Type": "String",
             "Default": ""
         },
-        "QSS3BucketName": {
+        "SourceBucket": {
             "AllowedPattern": "^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$",
-            "ConstraintDescription": "Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
-            "Default": "aws-quickstart",
-            "Description": "S3 bucket name for the Quick Start assets. Quick Start bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "ConstraintDescription": "Source bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Default": "git-aws-integration",
+            "Description": "S3 bucket name for the Source Code.",
             "Type": "String"
         },
-        "QSS3KeyPrefix": {
+        "SourceBucketSubFolder": {
             "AllowedPattern": "^[0-9a-zA-Z-/]*$",
-            "ConstraintDescription": "Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
-            "Default": "quickstart-git2s3/",
-            "Description": "S3 key prefix for the Quick Start assets. Quick Start key prefix can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "ConstraintDescription": "Sub Folder Name(Key prefix) can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Default": "sourcecode/",
+            "Description": "Sub Folder for the Source Code Assets.",
             "Type": "String"
+        },
+        "BucketForZippedSource": {
+            "AllowedPattern": "^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$",
+                "ConstraintDescription": "Bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+                "Default": "git-aws-integration-zip",
+                "Description": "Bucket to Store Zipped Source.",
+                "Type": "String"
         },
          "KMSKeyArn": {           
-            "Description": "Using an existing key for SSH key encryption and encryption",
-            "Default": "arn:aws:kms:ap-southeast-2:951274512560:key/0dd13786-77f4-442b-9cde-ded2606bac48",
+            "Description": "Using an existing key for SSH key Encryption and Decryption",
+            "Default": "",
+            "Type": "String"
+        },
+        "CopyZipsRoleArn": {
+            "Description": "Using an existing Role Arn to Assign to Copy Lambda Function",
+            "Default": "",
             "Type": "String"
         }
     },
@@ -226,12 +246,6 @@
         }
     },
     "Resources": {
-        "LambdaZipsBucket": {
-            "Type": "AWS::S3::Bucket",
-            "Properties": {
-                "Tags": []
-            }
-        },
         "CopyZips": {
             "Type": "AWS::CloudFormation::CustomResource",
             "Properties": {
@@ -242,73 +256,19 @@
                     ]
                 },
                 "DestBucket": {
-                    "Ref": "LambdaZipsBucket"
+                    "Ref": "BucketForZippedSource"
                 },
                 "SourceBucket": {
-                    "Ref": "QSS3BucketName"
+                    "Ref": "SourceBucket"
                 },
                 "Prefix": {
-                    "Ref": "QSS3KeyPrefix"
+                    "Ref": "SourceBucketSubFolder"
                 },
                 "Objects": [
                     "functions/packages/CreateSSHKey/lambda.zip",
                     "functions/packages/DeleteBucketContents/lambda.zip",
                     "functions/packages/GitPullS3/lambda.zip",
                     "functions/packages/ZipDl/lambda.zip"
-                ]
-            }
-        },
-        "CopyZipsRole": {
-            "Type": "AWS::IAM::Role",
-            "Properties": {
-                "AssumeRolePolicyDocument": {
-                    "Version": "2012-10-17",
-                    "Statement": [
-                        {
-                            "Effect": "Allow",
-                            "Principal": {
-                                "Service": "lambda.amazonaws.com"
-                            },
-                            "Action": "sts:AssumeRole"
-                        }
-                    ]
-                },
-                "ManagedPolicyArns": [
-                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-                ],
-                "Path": "/",
-                "Policies": [
-                    {
-                        "PolicyName": "lambda-copier",
-                        "PolicyDocument": {
-                            "Version": "2012-10-17",
-                            "Statement": [
-                                {
-                                    "Effect": "Allow",
-                                    "Action": [
-                                        "s3:GetObject"
-                                    ],
-                                    "Resource": [
-                                        {
-                                            "Fn::Sub": "arn:aws:s3:::${QSS3BucketName}/${QSS3KeyPrefix}*"
-                                        }
-                                    ]
-                                },
-                                {
-                                    "Effect": "Allow",
-                                    "Action": [
-                                        "s3:PutObject",
-                                        "s3:DeleteObject"
-                                    ],
-                                    "Resource": [
-                                        {
-                                            "Fn::Sub": "arn:aws:s3:::${LambdaZipsBucket}/${QSS3KeyPrefix}*"
-                                        }
-                                    ]
-                                }
-                            ]
-                        }
-                    }
                 ]
             }
         },
@@ -319,10 +279,7 @@
                 "Handler": "index.handler",
                 "Runtime": "python2.7",
                 "Role": {
-                    "Fn::GetAtt": [
-                        "CopyZipsRole",
-                        "Arn"
-                    ]
+                    "Ref": "CopyZipsRoleArn"
                 },
                 "Timeout": 240,
                 "Code": {
@@ -520,10 +477,10 @@
                 "Timeout": "300",
                 "Code": {
                     "S3Bucket": {
-                        "Ref": "LambdaZipsBucket"
+                        "Ref": "BucketForZippedSource"
                     },
                     "S3Key": {
-                        "Fn::Sub": "${QSS3KeyPrefix}functions/packages/CreateSSHKey/lambda.zip"
+                        "Fn::Sub": "${SourceBucketSubFolder}functions/packages/CreateSSHKey/lambda.zip"
                     }
                 }
             }
@@ -658,10 +615,10 @@
                 "Timeout": "300",
                 "Code": {
                     "S3Bucket": {
-                        "Ref": "LambdaZipsBucket"
+                        "Ref": "BucketForZippedSource"
                     },
                     "S3Key": {
-                        "Fn::Sub": "${QSS3KeyPrefix}functions/packages/DeleteBucketContents/lambda.zip"
+                        "Fn::Sub": "${SourceBucketSubFolder}functions/packages/DeleteBucketContents/lambda.zip"
                     }
                 }
             }
@@ -805,10 +762,10 @@
                 "Timeout": "300",
                 "Code": {
                     "S3Bucket": {
-                        "Ref": "LambdaZipsBucket"
+                        "Ref": "BucketForZippedSource"
                     },
                     "S3Key": {
-                        "Fn::Sub": "${QSS3KeyPrefix}functions/packages/GitPullS3/lambda.zip"
+                        "Fn::Sub": "${SourceBucketSubFolder}functions/packages/GitPullS3/lambda.zip"
                     }
                 }
             }
@@ -898,10 +855,10 @@
                 },
                 "Code": {
                     "S3Bucket": {
-                        "Ref": "LambdaZipsBucket"
+                        "Ref": "BucketForZippedSource"
                     },
                     "S3Key": {
-                        "Fn::Sub": "${QSS3KeyPrefix}functions/packages/ZipDl/lambda.zip"
+                        "Fn::Sub": "${SourceBucketSubFolder}functions/packages/ZipDl/lambda.zip"
                     }
                 },
                 "Runtime": "python2.7",

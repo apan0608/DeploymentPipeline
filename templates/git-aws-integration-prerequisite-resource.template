@@ -1,0 +1,101 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Git Webhooks to clone repository contents to S3. For integrating 3rd party git products with AWS Services like CodePipeline/CodeBuild (qs-1nfhrd9bh)",
+    "Metadata": {
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Source Code Bucket Configuration"
+                    },
+                    "Parameters": [
+                        "SourceBucket",
+                        "SourceBucketSubFolder",
+                        "BucketForZippedSource"
+                    ]
+                }
+            ]
+        }
+    },
+    "Parameters": {
+        "SourceBucket": {
+            "AllowedPattern": "^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$",
+            "ConstraintDescription": "Source bucket name can include numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen (-).",
+            "Default": "git-aws-integration",
+            "Description": "S3 bucket name for the Source Code.",
+            "Type": "String"
+        },
+        "SourceBucketSubFolder": {
+            "AllowedPattern": "^[0-9a-zA-Z-/]*$",
+            "ConstraintDescription": "Sun Folder Name(Key prefix) can include numbers, lowercase letters, uppercase letters, hyphens (-), and forward slash (/).",
+            "Default": "sourcecode/",
+            "Description": "Sub Folder Name for the Source Code.",
+            "Type": "String"
+        },
+         "BucketForZippedSource": {
+            "AllowedPattern": "^[0-9a-zA-Z-/]*$",
+            "ConstraintDescription": "Lambda zip bucket name",
+            "Default": "git-aws-integration-zip",
+            "Description": "Bucket that Stores the Zipped Source Code.",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "CopyZipsRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "lambda.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "ManagedPolicyArns": [
+                    "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+                ],
+                "Path": "/",
+                "Policies": [
+                    {
+                        "PolicyName": "lambda-copier",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetObject"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${SourceBucket}/${SourceBucketSubFolder}*"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:PutObject",
+                                        "s3:DeleteObject"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Sub": "arn:aws:s3:::${BucketForZippedSource}/${SourceBucketSubFolder}*"
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    }
+}   
+   
+   
