@@ -41,18 +41,7 @@
                         "GitPullRoleArn",
                         "WebHookRoleArn"
                     ]
-                },
-                {
-                    "Label": {
-                        "default": "Zip Download Settings"
-                    },
-                    "Parameters": [
-                        "GitToken",
-                        "OauthKey",
-                        "OauthSecret",
-                        "ZipDlRoleArn"
-                    ]
-                },
+                },            
                 {
                     "Label": {
                         "default": "Copy and Zip Sourcee Code Configuration"
@@ -79,15 +68,6 @@
                 "CustomDomainName": {
                     "default": "Custom Domain Name"
                 },
-                "GitToken": {
-                    "default": "Git Personal Access Token"
-                },
-                "OauthKey": {
-                    "default": "OAuth2 Key"
-                },
-                "OauthSecret": {
-                    "default": "OAuth2 Secret"
-                },
                 "OutputBucketName": {
                     "default": "Output S3 Bucket Name"
                 },
@@ -108,9 +88,6 @@
                 },
                 "DeleteBucketContentsRoleArn": {
                     "default": "Delete Bucket Contents Role Arn"
-                }, 
-                "ZipDlRoleArn": {
-                    "default": "Zip Download Lambda Role Arn"
                 }
             }
         }
@@ -142,35 +119,10 @@
             "Type": "String",
             "Default": ""
         },
-        "GitToken": {
-            "NoEcho": "true",
-            "Description": "zipdl method only. Personal access token, needed for GitHub Enterprise and GitLab",
-            "Type": "String",
-            "Default": "",
-            "ConstraintDescription": "this token must be generated from the git server/provider"
-        },
-        "OauthKey": {
-            "Description": "zipdl method only. OAuth2 Key needed for BitBucket",
-            "Type": "String",
-            "Default": "",
-            "ConstraintDescription": "this key must be generated from the git server/provider"
-        },
-        "OauthSecret": {
-            "NoEcho": "true",
-            "Description": "zipdl method only. OAuth2 Secret needed for BitBucket",
-            "Type": "String",
-            "Default": "",
-            "ConstraintDescription": "this secret must be generated from the git server/provider"
-        },
         "OutputBucketName": {
             "Description": "Bucket Name where the zip file output should be placed",
             "Type": "String",
             "Default": "erm-pm-nonprod-git-integration-outputbucket"
-        },    
-        "ZipDlRoleArn": {
-            "Description": "IAM role to allow lambda function to download and zip source code in S3 buckets",
-            "Type": "String",
-            "Default": ""
         },
         "KeyBucketName": {
             "AllowedPattern": "^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$",
@@ -245,43 +197,7 @@
                     ]
                 }
             ]
-        },
-        "UseGitToken": {
-            "Fn::Not": [
-                {
-                    "Fn::Equals": [
-                        {
-                            "Ref": "GitToken"
-                        },
-                        ""
-                    ]
-                }
-            ]
-        },
-        "UseOauthKey": {
-            "Fn::Not": [
-                {
-                    "Fn::Equals": [
-                        {
-                            "Ref": "OauthKey"
-                        },
-                        ""
-                    ]
-                }
-            ]
-        },
-        "UseOauthSecret": {
-            "Fn::Not": [
-                {
-                    "Fn::Equals": [
-                        {
-                            "Ref": "OauthSecret"
-                        },
-                        ""
-                    ]
-                }
-            ]
-        }
+        }      
     },
     "Resources": {              
         "CreateSSHKeyLambda": {
@@ -382,27 +298,7 @@
                     }
                 }
             }
-        },
-        "ZipDlLambda": {         
-            "Type": "AWS::Lambda::Function",
-            "Properties": {
-                "Handler": "lambda_function.lambda_handler",
-                "Role": {
-                    "Ref": "ZipDlRoleArn"
-                },
-                "Code": {
-                    "S3Bucket": {
-                        "Ref": "SourceBucket"
-                    },
-                    "S3Key": {
-                        "Fn::Sub": "${SourceSubFolder}functions/packages/ZipDl/lambda.zip"
-                    }
-                },
-                "Runtime": "python2.7",
-                "MemorySize": 128,
-                "Timeout": 30
-            }
-        },   
+        }, 
         "WebHookApi": {
             "Type": "AWS::ApiGateway::RestApi",
             "Properties": {
@@ -543,114 +439,6 @@
                                     }
                                 }
                             }
-                        },
-                        "/zipdl": {
-                            "post": {
-                                "consumes": [
-                                    "application/json"
-                                ],
-                                "produces": [
-                                    "application/json"
-                                ],
-                                "responses": {
-                                    "200": {
-                                        "description": "200 response",
-                                        "schema": {
-                                            "$ref": "#/definitions/Empty"
-                                        }
-                                    }
-                                },
-                                "x-amazon-apigateway-integration": {
-                                    "type": "aws",
-                                    "credentials": {
-                                        "Ref": "WebHookRoleArn"
-                                    },
-                                    "responses": {
-                                        "default": {
-                                            "statusCode": "200"
-                                        }
-                                    },
-                                    "requestParameters": {
-                                        "integration.request.header.X-Amz-Invocation-Type": "'Event'"
-                                    },
-                                    "passthroughBehavior": "when_no_templates",
-                                    "httpMethod": "POST",
-                                    "uri": {
-                                        "Fn::Join": [
-                                            "",
-                                            [
-                                                "arn:aws:apigateway:",
-                                                {
-                                                    "Ref": "AWS::Region"
-                                                },
-                                                ":lambda:path//2015-03-31/functions/",
-                                                {
-                                                    "Fn::GetAtt": [
-                                                        "ZipDlLambda",
-                                                        "Arn"
-                                                    ]
-                                                },
-                                                "/invocations"
-                                            ]
-                                        ]
-                                    },
-                                    "requestTemplates": {
-                                        "application/json": {
-                                            "Fn::Join": [
-                                                "",
-                                                [
-                                                    "#set($allParams = $input.params())\n",
-                                                    "{\n",
-                                                    "\"body-json\" : $input.json('$'),\n",
-                                                    "\"params\" : {\n",
-                                                    "#foreach($type in $allParams.keySet())\n",
-                                                    "    #set($params = $allParams.get($type))\n",
-                                                    "\"$type\" : {\n",
-                                                    "    #foreach($paramName in $params.keySet())\n",
-                                                    "    \"$paramName\" : \"$util.escapeJavaScript($params.get($paramName))\"\n",
-                                                    "        #if($foreach.hasNext),#end\n",
-                                                    "    #end\n",
-                                                    "}\n",
-                                                    "    #if($foreach.hasNext),#end\n",
-                                                    "#end\n",
-                                                    "},\n",
-                                                    "\"stage-variables\" : {\n",
-                                                    "#foreach($key in $stageVariables.keySet())\n",
-                                                    "\"$key\" : \"$util.escapeJavaScript($stageVariables.get($key))\"\n",
-                                                    "    #if($foreach.hasNext),#end\n",
-                                                    "#end\n",
-                                                    "},\n",
-                                                    "\"context\" : {\n",
-                                                    "    \"account-id\" : \"$context.identity.accountId\",\n",
-                                                    "    \"api-id\" : \"$context.apiId\",\n",
-                                                    "    \"api-key\" : \"$context.identity.apiKey\",\n",
-                                                    "    \"authorizer-principal-id\" : \"$context.authorizer.principalId\",\n",
-                                                    "    \"caller\" : \"$context.identity.caller\",\n",
-                                                    "    \"cognito-authentication-provider\" : \"$context.identity.cognitoAuthenticationProvider\",\n",
-                                                    "    \"cognito-authentication-type\" : \"$context.identity.cognitoAuthenticationType\",\n",
-                                                    "    \"cognito-identity-id\" : \"$context.identity.cognitoIdentityId\",\n",
-                                                    "    \"cognito-identity-pool-id\" : \"$context.identity.cognitoIdentityPoolId\",\n",
-                                                    "    \"http-method\" : \"$context.httpMethod\",\n",
-                                                    "    \"stage\" : \"$context.stage\",\n",
-                                                    "    \"source-ip\" : \"$context.identity.sourceIp\",\n",
-                                                    "    \"user\" : \"$context.identity.user\",\n",
-                                                    "    \"user-agent\" : \"$context.identity.userAgent\",\n",
-                                                    "    \"user-arn\" : \"$context.identity.userArn\",\n",
-                                                    "    \"request-id\" : \"$context.requestId\",\n",
-                                                    "    \"resource-id\" : \"$context.resourceId\",\n",
-                                                    "    \"resource-path\" : \"$context.resourcePath\",\n",
-                                                    "    \"oauth-key\" : \"$stageVariables.oauthkey\",\n",
-                                                    "    \"oauth-secret\" : \"$stageVariables.oauthsecret\",\n",
-                                                    "    \"output-bucket\" : \"$stageVariables.outputbucket\",\n",
-                                                    "    \"git-token\" : \"$stageVariables.gittoken\"\n",
-                                                    "    }\n",
-                                                    "}"
-                                                ]
-                                            ]
-                                        }
-                                    }
-                                }
-                            }
                         }
                     },
                     "securityDefinitions": {
@@ -708,39 +496,6 @@
                             "UseApiSecret",
                             {
                                 "Ref": "ApiSecret"
-                            },
-                            {
-                                "Ref": "AWS::NoValue"
-                            }
-                        ]
-                    },
-                    "gittoken": {
-                        "Fn::If": [
-                            "UseGitToken",
-                            {
-                                "Ref": "GitToken"
-                            },
-                            {
-                                "Ref": "AWS::NoValue"
-                            }
-                        ]
-                    },
-                    "oauthkey": {
-                        "Fn::If": [
-                            "UseOauthKey",
-                            {
-                                "Ref": "OauthKey"
-                            },
-                            {
-                                "Ref": "AWS::NoValue"
-                            }
-                        ]
-                    },
-                    "oauthsecret": {
-                        "Fn::If": [
-                            "UseOauthSecret",
-                            {
-                                "Ref": "OauthSecret"
                             },
                             {
                                 "Ref": "AWS::NoValue"
@@ -838,44 +593,6 @@
                             "Ref": "WebHookApiProdStage"
                         },
                         "/gitpull"
-                    ]
-                ]
-            }
-        },
-        "ZipDownloadWebHookApi": {
-            "Value": {
-                "Fn::Join": [
-                    "",
-                    [
-                        " https://",
-                        {
-                            "Fn::If": [
-                                "UseCustomDomain",
-                                {
-                                    "Ref": "CustomDomainName"
-                                },
-                                {
-                                    "Fn::Join": [
-                                        "",
-                                        [
-                                            {
-                                                "Ref": "WebHookApi"
-                                            },
-                                            ".execute-api.",
-                                            {
-                                                "Ref": "AWS::Region"
-                                            },
-                                            ".amazonaws.com"
-                                        ]
-                                    ]
-                                }
-                            ]
-                        },
-                        "/",
-                        {
-                            "Ref": "WebHookApiProdStage"
-                        },
-                        "/zipdl"
                     ]
                 ]
             }

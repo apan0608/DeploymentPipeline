@@ -449,78 +449,6 @@
                 ]
             }
         },
-        "ZipDlRole": {
-            "Type": "AWS::IAM::Role",
-            "Properties": {
-                "AssumeRolePolicyDocument": {
-                    "Statement": [
-                        {
-                            "Sid": "",
-                            "Effect": "Allow",
-                            "Principal": {
-                                "Service": [
-                                    "lambda.amazonaws.com"
-                                ]
-                            },
-                            "Action": "sts:AssumeRole"
-                        }
-                    ]
-                },
-                "Path": "/",
-                "Policies": [
-                    {
-                        "PolicyName": "S3GitIntegrationZipStoreContents",
-                        "PolicyDocument": {
-                            "Version": "2012-10-17",
-                            "Statement": [
-                                {
-                                    "Effect": "Allow",
-                                    "Action": [
-                                        "s3:PutObject"
-                                    ],
-                                    "Resource": [
-                                        {
-                                            "Fn::Join": [
-                                                "",
-                                                [
-                                                    "arn:aws:s3:::",
-                                                    {
-                                                        "Ref": "OutputBucket"
-                                                    }
-                                                ]
-                                            ]
-                                        },
-                                        {
-                                            "Fn::Join": [
-                                                "",
-                                                [
-                                                    "arn:aws:s3:::",
-                                                    {
-                                                        "Ref": "OutputBucket"
-                                                    },
-                                                    "/*"
-                                                ]
-                                            ]
-                                        }
-                                    ]
-                                },
-                                {
-                                    "Effect": "Allow",
-                                    "Action": [
-                                        "logs:CreateLogGroup",
-                                        "logs:CreateLogStream",
-                                        "logs:PutLogEvents"
-                                    ],
-                                    "Resource": [
-                                        "arn:aws:logs:*:*:*"
-                                    ]
-                                }
-                            ]
-                        }
-                    }
-                ]
-            }
-        },
         "WebHookRole": {
             "Type": "AWS::IAM::Role",
             "Properties": {
@@ -605,15 +533,7 @@
                     "Arn"
                 ]               
             }
-        },        
-        "ZipDlRoleArn": {
-            "Value": {               
-                "Fn::GetAtt":[
-                    "ZipDlRole",
-                    "Arn"
-                ]               
-            }
-        },
+        }
         "WebHookRoleArn": {
             "Value": {               
                 "Fn::GetAtt":[
