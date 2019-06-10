@@ -469,7 +469,7 @@
                 "Path": "/",
                 "Policies": [
                     {
-                        "PolicyName": "S3GitIntegrationZipContents",
+                        "PolicyName": "S3GitIntegrationZipStoreContents",
                         "PolicyDocument": {
                             "Version": "2012-10-17",
                             "Statement": [
